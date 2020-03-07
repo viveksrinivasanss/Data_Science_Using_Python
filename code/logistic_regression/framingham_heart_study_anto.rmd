@@ -1,0 +1,194 @@
+---
+title: "Framingham_Heart_Study"
+Author: "Antony Aristotle Savari"
+date: "17 November 2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+    
+### Framingham Case Overview
+
+The Framingham Heart Study is a long-term, ongoing cardiovascular cohort study on residents of the town of Framingham, Massachusetts. The study began in 1948 with 5,209 adult subjects from Framingham, and is now on its third generation of participants.Prior to it almost nothing was known about the "epidemiology of hypertensive or arteriosclerotic cardiovascular disease".Much of the now-common knowledge concerning heart disease, such as the effects of diet, exercise, and common medications such as aspirin, is based on this longitudinal study. It is a project of the National Heart, Lung, and Blood Institute, in collaboration with (since 1971) Boston University. Various health professionals from the hospitals and universities of Greater Boston staff the project.
+
+
+
+### About Data Collection
+
+In late 1940s, U.S. Government set out to better
+understand cardiovascular disease (CVD)
+. Plan: track large cohort of initially healthy patients
+over time
+. City of Framingham, MA selected as site for study
+. Appropriate size
+. Stable population
+. Cooperative doctors and residents
+. 1948: beginning of Framingham Heart Study 
+. 5,209 patients aged 30-59 enrolled
+. Patients given questionnaire and exam every 2 years
+. Physical characteristics
+. Behavioral characteristics
+. Test results
+. Exams and questions expanded over time
+
+### Business Understanding
+
+Cardiovascular disease (CVD) is the leading cause of death and serious illness in the United States. In 1948, the Framingham Heart Study - under the direction of the National Heart Institute (now known as the National Heart, Lung, and Blood Institute or NHLBI) - embarked on an ambitious project in health research. At the time, little was known about the general causes of heart disease and stroke, but the death rates for CVD had been increasing steadily since the beginning of the century and had become an American epidemic. 
+	The Framingham Heart Study became a joint project of the National Heart, Lung and Blood Institute and Boston University. The objective of the Framingham Heart Study was to identify the common factors or characteristics that contribute to CVD by following its development over a long period of time in a large group of participants who had not yet developed overt symptoms of CVD or suffered a heart attack or stroke. 
+	The researchers recruited 5,209 men and women between the ages of 30 and 62 from the town of Framingham, Massachusetts, and began the first round of extensive physical examinations and lifestyle interviews that they would later analyze for common patterns related to CVD development. Since 1948, the subjects have continued to return to the study every two years for a detailed medical history, physical examination, and laboratory tests, and in 1971, the Study enrolled a second generation - 5,124 of the original participants' adult children and their spouses - to participate in similar examinations.
+	Over the years, careful monitoring of the Framingham Study population has led to the identification of the major CVD risk factors - high blood pressure, high blood cholesterol, smoking, obesity, diabetes, and physical inactivity - as well as a great deal of valuable information on the effects of related factors such as blood triglyceride and HDL cholesterol levels, age, gender, and psychosocial issues. Although the Framingham cohort is primarily Caucasian, the importance of the major CVD risk factors identified in this group have been shown in other studies to apply almost universally among racial and ethnic groups, even though the patterns of distribution may vary from group to group. In the past half century, the Study has produced approximately 1,200 articles in leading medical journals. The concept of CVD risk factors has become an integral part of the modern medical curriculum and has led to the development of effective treatment and preventive strategies in clinical practice.
+	
+
+### Reading the Dataset
+
+```{r}
+data=read.csv("framingham.csv")
+```
+
+
+
+### Variable Types
+
+```{r}
+str(data)
+```
+
+### Converting the data to categorical
+
+```{r}
+data$male = as.factor(data$male)
+data$education = as.factor(data$education)
+data$currentSmoker = as.factor(data$currentSmoker)
+data$BPMeds = as.factor(data$BPMeds)
+data$prevalentStroke = as.factor(data$prevalentStroke)
+data$prevalentHyp = as.factor(data$prevalentHyp)
+data$diabetes = as.factor(data$diabetes)
+data$TenYearCHD = as.factor(data$TenYearCHD)
+```
+
+### Variable Types after converting
+
+```{r}
+str(data)
+```
+
+### Data Summary
+
+```{r}
+summary(data)
+```
+
+### Data Preparation
+
+### Missing Value Analysis
+
+```{r}
+
+library(VIM)
+aggr_plot <- aggr(data, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(data), cex.axis=.7, gap=3, ylab=c("Histogram of missing data","Pattern"))
+```
+
+
+NA's are identified and loaded with the median values for numeric variables and mode values for categorical variables.
+
+### Inputing Missing Value
+
+```{r}
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+data$glucose[is.na(data$glucose)] <- median(data$glucose, na.rm=TRUE)
+data$education[is.na(data$education)] <- getmode(data$education)
+data$BPMeds[is.na(data$BPMeds)] <- getmode(data$BPMeds)
+data$totChol[is.na(data$totChol)] <- median(data$totChol, na.rm=TRUE)
+data$cigsPerDay[is.na(data$cigsPerDay)] <- median(data$cigsPerDay, na.rm=TRUE)
+data$BMI[is.na(data$BMI)] <- median(data$BMI, na.rm=TRUE)
+data$heartRate[is.na(data$heartRate)] <- median(data$heartRate, na.rm=TRUE)
+```
+
+
+### After Filling Missing Value
+
+```{r}
+aggr_plot1 <- aggr(data, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(data), cex.axis=.7, gap=3, ylab=c("Histogram of missing data","Pattern"))
+```
+
+### Spliting Dataset Into Train and Test
+
+```{r}
+library(caTools)
+set.seed(1000)
+split = sample.split(data$TenYearCHD, SplitRatio = 0.70)
+train = subset(data, split==TRUE)
+test = subset(data, split==FALSE)
+```
+
+### Logistic Regression Model
+
+```{r}
+framinghamLog = glm(TenYearCHD ~ ., data = train, family=binomial)
+summary(framinghamLog)
+```
+
+### Top Contributing Features From Model
+
+From the pvalue, it is evident that the below are the significant factors on which a Heart Disease can be predicted.
+
+* Male
+* Age
+* cigsPerDay
+* prevalentStroke
+* Glucose
+* totChol
+* sysBP
+
+
+
+### Predicting Test Data
+
+```{r}
+# Predictions on the test set
+predictTest = predict(framinghamLog, type="response", newdata=test)
+```
+
+### Calculating Metrics
+
+```{r}
+library(ggplot2)
+library(caret)
+confusion = table(test$TenYearCHD, as.numeric(predictTest > 0.5))
+confusionMatrix(confusion)
+
+fourfoldplot(confusion, color = c("#CC6666", "#99CC99"),
+             conf.level = 0, margin = 1, main = "Confusion Matrix")
+
+```
+
+This being an unbalanced dataset, the accuracy does not play a major role. However, the high sensitivity and specificity denotes that the dataset is a valid one.
+
+### ROC Curve
+
+
+```{r}
+library(ROCR)
+ROCRpred <- prediction(predictTest, test$TenYearCHD)
+ROCRperf <- performance(ROCRpred, 'tpr','fpr')
+plot(ROCRperf, colorize = TRUE, text.adj = c(-0.2,1.7))
+paste("The value of AUC is ",as.numeric(performance(ROCRpred, "auc")@y.values) )
+```
+
+The Area under the curve is 72% and it concludes that the dataset is good and the 7 factors that are identified significant can be used to predict heart disease.
+* Male
+* Age
+* cigsPerDay
+* prevalentStroke
+* Glucose
+* totChol
+* sysBP
+
+It can also be concluded that, the further data collection can be concentrated on these 7 factors and the other attributes can be ignored.
